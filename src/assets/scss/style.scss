@@ -1,0 +1,14 @@
+@import "variables";
+
+@import "~bootstrap/scss/bootstrap";
+@import "~bootstrap-icons/font/bootstrap-icons.scss";
+@import "./layout/sidebar";
+@import "./layout/container";
+
+
+.text-main{
+    color: #e60404;
+}
+.bg-main{
+    background: #e60404;
+}
