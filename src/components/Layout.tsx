@@ -74,6 +74,7 @@ const Layout = () => {
             <Link
               key={item.name}
               to={item.path}
+              onClick={toggleSidebar}
               className={`flex items-center py-2.5 px-4 rounded transition duration-200 no-underline ${
                 location.pathname === item.path
                   ? 'bg-red-50 text-red-600'
