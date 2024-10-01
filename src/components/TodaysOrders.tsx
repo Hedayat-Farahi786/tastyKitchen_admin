@@ -3,6 +3,9 @@ import { Card, CardBody, Badge, Button } from "reactstrap";
 import { FiPackage, FiEye, FiEyeOff } from "react-icons/fi";
 import { MdEuroSymbol } from "react-icons/md";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import io from "socket.io-client";
+const socket = io("https://tastykitchen-websocket.up.railway.app");
+import notification from "../assets/notification-sound.mp3";
 
 const TodaysOrders = () => {
   const [pendingOrders, setPendingOrders] = useState([]);
@@ -14,6 +17,38 @@ const TodaysOrders = () => {
   useEffect(() => {
     fetchTodaysOrders();
   }, []);
+
+  const [audio] = useState(new Audio(notification));
+
+  useEffect(() => {
+    // Allow autoplay only after user interaction
+    const playSound = () => {
+      audio.play().catch((error) => {
+        console.warn("Autoplay prevented by browser:", error);
+        // You can provide a visual indication to the user if autoplay is blocked
+      });
+    };
+  
+    // Listen for new orders from the server
+    socket.on("new-order", (newOrder) => {
+      console.log("NEW!!!");
+      console.log(newOrder);
+  
+      // Play sound notification
+      playSound();
+  
+      // Add new order to the top of the pending orders
+      setPendingOrders((prevPendingOrders) => [
+        { ...newOrder, isDone: false }, // Mark new orders as not done
+        ...prevPendingOrders,
+      ]);
+    });
+  
+    return () => {
+      socket.off("new-order"); // Clean up the listener when the component unmounts
+    };
+  }, [audio]);
+  
 
   const fetchTodaysOrders = async () => {
     setLoading(true);
@@ -37,8 +72,8 @@ const TodaysOrders = () => {
           }))
         : [];
 
-      setPendingOrders(updatedOrders.filter(order => !order.isDone));
-      setCompletedOrders(updatedOrders.filter(order => order.isDone));
+      setPendingOrders(updatedOrders.filter((order) => !order.isDone));
+      setCompletedOrders(updatedOrders.filter((order) => order.isDone));
     } catch (error) {
       console.error("Error fetching today's orders:", error);
       setError(error.message);
@@ -61,21 +96,28 @@ const TodaysOrders = () => {
   };
 
   const handleDoneToggle = (orderId) => {
-    const orderToToggle = pendingOrders.find(order => order._id === orderId) || 
-                          completedOrders.find(order => order._id === orderId);
+    const orderToToggle =
+      pendingOrders.find((order) => order._id === orderId) ||
+      completedOrders.find((order) => order._id === orderId);
 
     if (orderToToggle) {
       const updatedOrder = { ...orderToToggle, isDone: !orderToToggle.isDone };
       if (updatedOrder.isDone) {
-        setPendingOrders(pendingOrders.filter(order => order._id !== orderId));
+        setPendingOrders(
+          pendingOrders.filter((order) => order._id !== orderId)
+        );
         setCompletedOrders([...completedOrders, updatedOrder]);
       } else {
-        setCompletedOrders(completedOrders.filter(order => order._id !== orderId));
+        setCompletedOrders(
+          completedOrders.filter((order) => order._id !== orderId)
+        );
         setPendingOrders([...pendingOrders, updatedOrder]);
       }
 
       // Update localStorage
-      const storedDoneStates = JSON.parse(localStorage.getItem("doneOrders") || "{}");
+      const storedDoneStates = JSON.parse(
+        localStorage.getItem("doneOrders") || "{}"
+      );
       storedDoneStates[orderId] = updatedOrder.isDone;
       localStorage.setItem("doneOrders", JSON.stringify(storedDoneStates));
     }
@@ -189,18 +231,52 @@ const TodaysOrders = () => {
                               <div className="flex justify-between items-start bg-gray-50 p-3 rounded-lg">
                                 <div className="flex-grow">
                                   <p className="font-bold text-gray-800">
-                                    Order #{order.orderNumber || "N/A"}
+                                    <span className="text-main">Order</span> #
+                                    {order.orderNumber || "N/A"}
                                   </p>
                                   <div className="mt-1">
                                     {order.products &&
                                       order.products.map((product, index) => (
-                                        <p key={index}>
-                                          {product.productId.name} x{" "}
-                                          {product.quantity}
-                                        </p>
+                                        <div className="mt-3 flex items-start space-x-4">
+                                          <img
+                                            src={product.productId.image}
+                                            alt="image"
+                                            className="rounded w-14 h-14 object-cover"
+                                          />
+                                          <div>
+                                            <span
+                                              key={index}
+                                              className="font-semibold"
+                                            >
+                                              {product.productId.name} x
+                                              {product.quantity}
+                                            </span>
+                                            <div className="flex flex-col space-y-0">
+                                              {product.extras.map((extra) => {
+                                                const name =
+                                                  product?.productId?.menuId?.extras.find(
+                                                    (ext) => ext._id === extra
+                                                  ).name;
+                                                return (
+                                                  <span
+                                                    key={extra}
+                                                    className="text-xs md:text-sm text-gray-600"
+                                                  >
+                                                    {name}
+                                                  </span>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        </div>
                                       ))}
                                   </div>
-                                  <span className="text-sm text-gray-500">{order.delivery.note}</span>
+                                  <div className="text-sm text-gray-500 w-full border-t mt-3 py-2 flex flex-col space-y-2">
+                                    <span className="font-semibold">
+                                      Bestellzettel:
+                                    </span>
+                                    <span>{order?.delivery?.note}</span>
+                                  </div>
                                 </div>
                                 <div className="flex flex-col items-end">
                                   <p className="font-semibold text-gray-800 mt-2">
@@ -226,7 +302,10 @@ const TodaysOrders = () => {
                 </Droppable>
               </DragDropContext>
               {currentOrders.length === 0 && (
-                <p className="text-gray-500">No {showDoneOrders ? "completed" : "pending"} orders to display.</p>
+                <p className="text-gray-500">
+                  No {showDoneOrders ? "completed" : "pending"} orders to
+                  display.
+                </p>
               )}
             </div>
           </>

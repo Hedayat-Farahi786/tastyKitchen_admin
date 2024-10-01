@@ -11,6 +11,7 @@ import Categories from './components/Categories';
 import Testimonials from './components/Testimonials';
 import Contacts from './components/Contacts';
 import Users from './components/Users';
+import OrderDetail from './components/OrderDetail';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="/orders/:orderNumber" element={<OrderDetail />} />
           <Route path="products" element={<Products />} />
           <Route path="categories" element={<Categories />} />
           <Route path="testimonials" element={<Testimonials />} />
