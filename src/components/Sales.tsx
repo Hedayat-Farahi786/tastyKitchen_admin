@@ -4,18 +4,18 @@ import SalesChart from './SalesChart';
 import ProjectTables from './ProjectTables';
 import TodaysOrders from './TodaysOrders';
 
-const Dashboard = () => {
+const Sales = () => {
   return (
     <div className="p-4 bg-gray-50">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Dashboard</h2>
-      <Row className="mb-4">
-        <Col lg="8" className="mb-4 lg:mb-0">
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Sales</h2>
           <SalesChart />
+      {/* <Row className="mb-4">
+        <Col lg="8" className="mb-4 lg:mb-0">
         </Col>
         <Col lg="4">
           <TodaysOrders />
         </Col>
-      </Row>
+      </Row> */}
       {/* <Row>
         <Col lg="12">
           <ProjectTables />
@@ -25,4 +25,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Sales;

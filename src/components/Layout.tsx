@@ -1,7 +1,7 @@
 // src/components/Layout.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { FiHome, FiShoppingCart, FiBox, FiList, FiMessageSquare, FiMail, FiUsers, FiMenu, FiX, FiChevronDown } from 'react-icons/fi';
+import { FiHome, FiShoppingCart, FiBox, FiList, FiMessageSquare, FiMail, FiUsers, FiMenu, FiX, FiChevronDown, FiCalendar, FiBarChart } from 'react-icons/fi';
 import { decodeToken } from '../helpers/token';
 import logo from "../assets/images/logos/logo.png"
 import { FaCalendarAlt, FaClock } from 'react-icons/fa';
@@ -29,7 +29,8 @@ const Layout = () => {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: FiHome },
+    { name: 'Today', path: '/today', icon: FiCalendar },
+    { name: 'Sales', path: '/sales', icon: FiBarChart },
     { name: 'Orders', path: '/orders', icon: FiShoppingCart },
     { name: 'Products', path: '/products', icon: FiBox },
     { name: 'Categories', path: '/categories', icon: FiList },
@@ -63,7 +64,7 @@ const Layout = () => {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <aside className={`bg-white text-gray-800 w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition duration-200 ease-in-out z-20 shadow-lg`}>
-        <div className="flex items-center justify-between px-4">
+        <div className="flex items-center justify-between px-4 mb-10">
           <img src={logo} alt="logo" className='w-40' />
           <button onClick={toggleSidebar} className="md:hidden text-gray-800">
             <FiX className="h-6 w-6" />
