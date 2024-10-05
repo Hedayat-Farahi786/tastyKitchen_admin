@@ -1,7 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardBody, Button, Input, Modal, ModalHeader, ModalBody, ModalFooter } from 'reactstrap';
-import { FiEdit2, FiEye, FiEyeOff, FiTrash2, FiPlus, FiSearch } from 'react-icons/fi';
-import ProductSidebar from './ProductSidebar';
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Badge,
+} from "reactstrap";
+import {
+  FiEdit2,
+  FiEye,
+  FiEyeOff,
+  FiTrash2,
+  FiPlus,
+  FiSearch,
+} from "react-icons/fi";
+import ProductSidebar from "./ProductSidebar";
+import { MdOutlineVerified, MdVerified } from "react-icons/md";
+import toast, { Toaster } from "react-hot-toast";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -13,8 +32,8 @@ const Products = () => {
   const [modalAction, setModalAction] = useState(null);
   const [modalProduct, setModalProduct] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
 
   useEffect(() => {
     fetchProducts();
@@ -22,16 +41,24 @@ const Products = () => {
 
   const fetchProducts = () => {
     setLoading(true);
-    fetch('https://tastykitchen-backend.vercel.app/products')
-      .then(response => response.json())
-      .then(data => {
+    fetch("https://tastykitchen-backend.vercel.app/products")
+      .then((response) => response.json())
+      .then((data) => {
         setProducts(data);
-        const uniqueCategories = ['All', ...new Set(data.map(product => product.menuId.name))];
+        const categories = Object.entries(
+          data.reduce((a,p) => ({...a, [p.menuId.name]: (a[p.menuId.name] || 0) + 1}), {})
+        ).map(([name,count]) => ({name, count}));
+        
+        const uniqueCategories = [
+          {name: 'All', count: data.length},
+          {name: 'Top', count: data.reduce((n,p) => n + !!p.topProduct, 0)},
+          ...categories
+        ];
         setCategories(uniqueCategories);
         setLoading(false);
       });
   };
-
+  
   const handleEdit = (product) => {
     setEditProduct(product);
     setSidebarOpen(true);
@@ -47,64 +74,123 @@ const Products = () => {
 
   const handleDelete = (product) => {
     setModalProduct(product);
-    setModalAction('delete');
+    setModalAction("delete");
     toggleModal();
   };
 
   const handleToggleVisible = (product) => {
     setModalProduct(product);
-    setModalAction('toggleVisible');
+    setModalAction("toggleVisible");
+    toggleModal();
+  };
+  const handleToggleTop = (product) => {
+    setModalProduct(product);
+    setModalAction("toggleTop");
     toggleModal();
   };
 
   const confirmAction = () => {
     setProcessing(true);
-    const url = modalAction === 'delete'
-      ? `https://tastykitchen-backend.vercel.app/products/${modalProduct._id}`
-      : `https://tastykitchen-backend.vercel.app/products/${modalProduct._id}/toggleVisible`;
-    const method = modalAction === 'delete' ? 'DELETE' : 'PUT';
+    let url;
+    const baseUrl = `https://tastykitchen-backend.vercel.app/products/${modalProduct._id}`;
+
+    switch (modalAction) {
+      case "delete":
+        url = baseUrl;
+        break;
+      case "toggleTop":
+        url = `${baseUrl}/toggleTop`;
+        break;
+      default:
+        url = `${baseUrl}/toggleVisible`;
+        break;
+    }
+
+    const method = modalAction === "delete" ? "DELETE" : "PUT";
 
     fetch(url, { method })
-      .then(response => response.json())
+      .then((response) => {
+        // Check if the response is successful (status 200-299)
+        if (!response.ok) {
+          return response.json().then((error) => {
+            setProcessing(false);
+            console.error("Error:", error);
+            toast.error(error.message);
+          });
+        }
+        return response.json();
+      })
       .then(() => {
         setProcessing(false);
         toggleModal();
         setModalProduct(null);
         fetchProducts();
       })
-      .catch(error => {
+      .catch((error) => {
         setProcessing(false);
-        console.error('Error:', error);
+        console.error("Error:", error);
       });
   };
 
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    (activeCategory === 'All' || product.menuId.name === activeCategory)
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      (activeCategory === "All" || product.menuId.name === activeCategory)
   );
+
+  const topProducts = products.filter((product) => product.topProduct);
 
   const ProductCard = ({ product }) => (
     <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-      <img className="w-full h-80 object-cover object-center rounded-tr-md rounded-tl-md" src={product.image} alt={product.name} />
+      <img
+        className="w-full h-80 object-cover object-center rounded-tr-md rounded-tl-md"
+        src={product.image}
+        alt={product.name}
+      />
       <div className="p-4">
-        <h3 className="font-semibold text-lg mb-2 text-gray-800">{product.name}</h3>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{product.description}</p>
+        <h3 className="font-semibold text-lg mb-2 text-gray-800">
+          {product.name}
+        </h3>
+        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+          {product.description}
+        </p>
         <div className="flex justify-between items-center">
           <span className="text-red-600 font-semibold text-lg">
-            {product.options[0]?.price ? `€${product.options[0].price.toFixed(2)}` : 'N/A'}
+            {product.options[0]?.price
+              ? `€${product.options[0].price.toFixed(2)}`
+              : "N/A"}
           </span>
           <div className="flex space-x-2">
-            <Button color="light" className="p-2 hover:bg-gray-100" onClick={() => handleEdit(product)}>
-              <FiEdit2 size={18} />
+            <Button
+              color={product.topProduct ? "info" : "light"}
+              className={`p-2 ${product.topProduct ? "text-white" : "hover:bg-gray-200"}`}
+              onClick={() => handleToggleTop(product)}
+            >
+              {product.topProduct ? (
+                <MdVerified size={18} />
+              ) : (
+                <MdOutlineVerified size={18} />
+              )}
             </Button>
-            <Button 
-              color={product.visible ? "success" : "warning"} 
-              className={`p-2 ${product.visible ? 'hover:bg-green-600' : 'hover:bg-yellow-600'}`} 
+            <Button
+              color={product.visible ? "success" : "warning"}
+              className={`p-2 ${product.visible ? "hover:bg-green-600" : "hover:bg-yellow-600"}`}
               onClick={() => handleToggleVisible(product)}
             >
               {product.visible ? <FiEye size={18} /> : <FiEyeOff size={18} />}
             </Button>
-            <Button color="danger" className="p-2 hover:bg-red-700" onClick={() => handleDelete(product)}>
+            <Button
+              color="secondary"
+              className="p-2"
+              onClick={() => handleEdit(product)}
+            >
+              <FiEdit2 size={18} />
+            </Button>
+            <Button
+              color="danger"
+              className="p-2 hover:bg-red-700"
+              onClick={() => handleDelete(product)}
+            >
               <FiTrash2 size={18} />
             </Button>
           </div>
@@ -118,7 +204,9 @@ const Products = () => {
       <Card className="mb-4 border-0 shadow-sm">
         <CardBody>
           <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Products</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">
+              Products
+            </h2>
             <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
               <div className="relative flex items-center">
                 <Input
@@ -130,13 +218,13 @@ const Products = () => {
                 />
                 <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               </div>
-              <Button 
-                color="danger" 
+              <Button
+                color="danger"
                 className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out flex items-center justify-center"
                 onClick={() => setSidebarOpen(true)}
               >
                 <span className="flex items-center justify-center">
-                <FiPlus className="mr-2" /> Add Product
+                  <FiPlus className="mr-2" /> Add Product
                 </span>
               </Button>
             </div>
@@ -144,16 +232,21 @@ const Products = () => {
           <div className="flex flex-wrap gap-2 mb-6">
             {categories.map((category) => (
               <Button
-                key={category}
-                color={activeCategory === category ? "danger" : "light"}
-                className={`rounded-full px-4 py-2 text-sm font-medium border ${
-                  activeCategory === category 
-                    ? 'bg-red-600 text-white hover:bg-red-700' 
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                key={category.name}
+                color={activeCategory === category.name ? "danger" : "light"}
+                className={`rounded-full px-4 py-2 text-sm font-medium border flex items-center justify-center space-x-2 ${
+                  activeCategory === category.name
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
                 } transition duration-300 ease-in-out`}
-                onClick={() => setActiveCategory(category)}
+                onClick={() => setActiveCategory(category.name)}
               >
-                {category}
+                <span>{category.name}</span> <Badge
+  color="danger"
+  pill
+>
+  {category.count}
+</Badge>
               </Button>
             ))}
           </div>
@@ -162,10 +255,20 @@ const Products = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
+            <div>
+              {activeCategory === "Top" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {topProducts.map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredProducts.map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </CardBody>
@@ -181,27 +284,33 @@ const Products = () => {
       <Modal isOpen={modal} toggle={toggleModal}>
         <ModalHeader toggle={toggleModal} className="border-b-0 pb-0">
           <span className="text-xl font-semibold text-gray-800">
-            {modalAction === 'delete' ? 'Confirm Delete' : 'Confirm Visibility Change'}
+            {modalAction === "delete"
+              ? "Confirm Delete"
+              : modalAction === "toggleTop"
+                ? "Confirm Top Item Toggle"
+                : "Confirm Visibility Change"}
           </span>
         </ModalHeader>
         <ModalBody className="pt-4">
           <p className="text-gray-600">
-            {modalAction === 'delete'
+            {modalAction === "delete"
               ? `Are you sure you want to delete the product: ${modalProduct?.name}?`
-              : `Are you sure you want to ${modalProduct?.visible ? 'hide' : 'show'} the product: ${modalProduct?.name}?`}
+              : modalAction === "toggleTop"
+                ? `Are you sure you want to ${modalProduct?.topProduct ? "remove" : "set"} the product: ${modalProduct?.name} as a top item?`
+                : `Are you sure you want to ${modalProduct?.visible ? "hide" : "show"} the product: ${modalProduct?.name}?`}
           </p>
         </ModalBody>
         <ModalFooter className="border-t-0 pt-0">
-          <Button 
-            color="danger" 
-            onClick={confirmAction} 
+          <Button
+            color="danger"
+            onClick={confirmAction}
             disabled={processing}
             className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out"
           >
-            {processing ? 'Processing...' : 'Confirm'}
+            {processing ? "Processing..." : "Confirm"}
           </Button>
-          <Button 
-            color="secondary" 
+          <Button
+            color="secondary"
             onClick={toggleModal}
             className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out ml-2"
           >

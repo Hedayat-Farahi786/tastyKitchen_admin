@@ -4,25 +4,25 @@ import { Link } from 'react-router-dom';
 import io from 'socket.io-client';
 import { FiChevronRight, FiEye } from 'react-icons/fi';
 
-const socket = io("http://localhost:5000", {
-  transports: ["websocket", "polling"],
-  reconnectionAttempts: 5,
-  timeout: 20000,
-  withCredentials: true,
-});
+// const socket = io("http://localhost:5000", {
+//   transports: ["websocket", "polling"],
+//   reconnectionAttempts: 5,
+//   timeout: 20000,
+//   withCredentials: true,
+// });
 
 const ProjectTables = () => {
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    socket.on("new_order", fetchOrders);
-    fetchOrders();
-    return () => {
-      socket.off("new_order", fetchOrders);
-      socket.disconnect();
-    };
-  }, []);
+  // useEffect(() => {
+  //   socket.on("new_order", fetchOrders);
+  //   fetchOrders();
+  //   return () => {
+  //     socket.off("new_order", fetchOrders);
+  //     socket.disconnect();
+  //   };
+  // }, []);
 
   const fetchOrders = () => {
     setLoading(true);

@@ -23,12 +23,12 @@ import io from "socket.io-client";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
-const socket = io("http://localhost:5000", {
-  transports: ["websocket", "polling"],
-  reconnectionAttempts: 5,
-  timeout: 20000,
-  withCredentials: true,
-});
+// const socket = io("http://localhost:5000", {
+//   transports: ["websocket", "polling"],
+//   reconnectionAttempts: 5,
+//   timeout: 20000,
+//   withCredentials: true,
+// });
 
 const Orders = () => {
   const [tableData, setTableData] = useState([]);
@@ -43,15 +43,15 @@ const Orders = () => {
   });
   const [isDownloading, setIsDownloading] = useState(false);
 
-  useEffect(() => {
-    socket.on("new_order", () => {
-      fetchData(currentPage, itemsPerPage, searchCriteria);
-    });
+  // useEffect(() => {
+  //   socket.on("new_order", () => {
+  //     fetchData(currentPage, itemsPerPage, searchCriteria);
+  //   });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+  //   return () => {
+  //     socket.disconnect();
+  //   };
+  // }, []);
 
   useEffect(() => {
     fetchData(currentPage, itemsPerPage, searchCriteria);
