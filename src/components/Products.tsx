@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Card,
-  CardBody,
   Button,
   Input,
   Modal,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Badge,
 } from "reactstrap";
 import {
   FiEdit2,
@@ -17,10 +14,13 @@ import {
   FiTrash2,
   FiPlus,
   FiSearch,
+  FiList,
 } from "react-icons/fi";
 import ProductSidebar from "./ProductSidebar";
-import { MdOutlineVerified, MdVerified } from "react-icons/md";
-import toast, { Toaster } from "react-hot-toast";
+import { MdVerified } from "react-icons/md";
+import toast from "react-hot-toast";
+import { API_BASE_URL } from "../config/api";
+import LoadingSpinner from "./LoadingSpinner";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -33,7 +33,7 @@ const Products = () => {
   const [modalProduct, setModalProduct] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState("Alle");
 
   useEffect(() => {
     fetchProducts();
@@ -41,24 +41,32 @@ const Products = () => {
 
   const fetchProducts = () => {
     setLoading(true);
-    fetch("https://tastykitchen-backend.vercel.app/products")
+    fetch(`${API_BASE_URL}/products`)
       .then((response) => response.json())
       .then((data) => {
         setProducts(data);
         const categories = Object.entries(
-          data.reduce((a,p) => ({...a, [p.menuId.name]: (a[p.menuId.name] || 0) + 1}), {})
-        ).map(([name,count]) => ({name, count}));
-        
+          data.reduce(
+            (a, p) => ({ ...a, [p.menuId.name]: (a[p.menuId.name] || 0) + 1 }),
+            {}
+          )
+        ).map(([name, count]) => ({ name, count }));
+
         const uniqueCategories = [
-          {name: 'All', count: data.length},
-          {name: 'Top', count: data.reduce((n,p) => n + !!p.topProduct, 0)},
-          ...categories
+          { name: "Alle", count: data.length },
+          { name: "Top", count: data.reduce((n, p) => n + !!p.topProduct, 0) },
+          ...categories,
         ];
         setCategories(uniqueCategories);
         setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching products:", error);
+        toast.error("Fehler beim Laden der Produkte");
+        setLoading(false);
       });
   };
-  
+
   const handleEdit = (product) => {
     setEditProduct(product);
     setSidebarOpen(true);
@@ -83,6 +91,7 @@ const Products = () => {
     setModalAction("toggleVisible");
     toggleModal();
   };
+
   const handleToggleTop = (product) => {
     setModalProduct(product);
     setModalAction("toggleTop");
@@ -92,7 +101,7 @@ const Products = () => {
   const confirmAction = () => {
     setProcessing(true);
     let url;
-    const baseUrl = `https://tastykitchen-backend.vercel.app/products/${modalProduct._id}`;
+    const baseUrl = `${API_BASE_URL}/products/${modalProduct._id}`;
 
     switch (modalAction) {
       case "delete":
@@ -110,12 +119,12 @@ const Products = () => {
 
     fetch(url, { method })
       .then((response) => {
-        // Check if the response is successful (status 200-299)
         if (!response.ok) {
           return response.json().then((error) => {
             setProcessing(false);
             console.error("Error:", error);
-            toast.error(error.message);
+            toast.error(error.message || "Ein Fehler ist aufgetreten");
+            throw new Error(error.message);
           });
         }
         return response.json();
@@ -124,6 +133,7 @@ const Products = () => {
         setProcessing(false);
         toggleModal();
         setModalProduct(null);
+        toast.success("Erfolgreich aktualisiert");
         fetchProducts();
       })
       .catch((error) => {
@@ -135,144 +145,352 @@ const Products = () => {
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (activeCategory === "All" || product.menuId.name === activeCategory)
+      (activeCategory === "Alle" || product.menuId.name === activeCategory)
   );
 
   const topProducts = products.filter((product) => product.topProduct);
 
   const ProductCard = ({ product }) => (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-      <img
-        className="w-full h-80 object-cover object-center rounded-tr-md rounded-tl-md"
-        src={product.image}
-        alt={product.name}
-      />
-      <div className="p-4">
-        <h3 className="font-semibold text-lg mb-2 text-gray-800">
-          {product.name}
-        </h3>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {product.description}
-        </p>
-        <div className="flex justify-between items-center">
-          <span className="text-red-600 font-semibold text-lg">
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 border-gray-100 hover:border-primary-200 group">
+      {/* Product Image */}
+      <div className="relative overflow-hidden h-48 sm:h-56 md:h-64 bg-gradient-to-br from-gray-100 to-gray-200">
+        <img
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          src={product.image}
+          alt={product.name}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+              const placeholder = parent.querySelector(
+                ".image-placeholder-card"
+              );
+              if (placeholder) {
+                (placeholder as HTMLElement).style.display = "flex";
+              }
+            }
+          }}
+        />
+        {/* Placeholder for broken images in card */}
+        <div
+          className="image-placeholder-card absolute inset-0 hidden flex-col items-center justify-center text-gray-400"
+          style={{ display: "none" }}
+        >
+          <svg
+            className="w-12 h-12 sm:w-16 sm:h-16 mb-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <span className="text-xs font-medium">Bild nicht verfügbar</span>
+        </div>
+        {/* Top Product Badge */}
+        {product.topProduct && (
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold flex items-center shadow-lg">
+            <MdVerified className="mr-1" size={14} /> Top-Produkt
+          </div>
+        )}
+        {/* Hidden Overlay */}
+        {!product.visible && (
+          <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center backdrop-blur-sm">
+            <span className="bg-white text-gray-900 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm shadow-lg">
+              🚫 Versteckt
+            </span>
+          </div>
+        )}
+        {/* Price Tag */}
+        <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 bg-white/95 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg shadow-lg">
+          <span className="text-primary-600 font-bold text-lg sm:text-xl">
             {product.options[0]?.price
               ? `€${product.options[0].price.toFixed(2)}`
               : "N/A"}
           </span>
-          <div className="flex space-x-2">
-            <Button
-              color={product.topProduct ? "info" : "light"}
-              className={`p-2 ${product.topProduct ? "text-white" : "hover:bg-gray-200"}`}
-              onClick={() => handleToggleTop(product)}
-            >
-              {product.topProduct ? (
-                <MdVerified size={18} />
-              ) : (
-                <MdOutlineVerified size={18} />
-              )}
-            </Button>
-            <Button
-              color={product.visible ? "success" : "warning"}
-              className={`p-2 ${product.visible ? "hover:bg-green-600" : "hover:bg-yellow-600"}`}
-              onClick={() => handleToggleVisible(product)}
-            >
-              {product.visible ? <FiEye size={18} /> : <FiEyeOff size={18} />}
-            </Button>
-            <Button
-              color="secondary"
-              className="p-2"
-              onClick={() => handleEdit(product)}
-            >
-              <FiEdit2 size={18} />
-            </Button>
-            <Button
-              color="danger"
-              className="p-2 hover:bg-red-700"
-              onClick={() => handleDelete(product)}
-            >
-              <FiTrash2 size={18} />
-            </Button>
+        </div>
+      </div>
+
+      {/* Product Info */}
+      <div className="p-3 sm:p-4 md:p-5">
+        <h3 className="font-bold text-base sm:text-lg mb-2 text-gray-900 line-clamp-1">
+          {product.name}
+        </h3>
+        <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2 leading-relaxed min-h-[32px] sm:min-h-[40px]">
+          {product.description}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-3 sm:pt-4 border-t border-gray-100">
+          {/* Top Product Toggle */}
+          <button
+            className={`flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 transition-all duration-200 font-medium text-xs sm:text-sm ${
+              product.topProduct
+                ? "bg-primary-600 border-primary-600 text-white shadow-md hover:bg-primary-700"
+                : "bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600"
+            }`}
+            onClick={() => handleToggleTop(product)}
+            title={
+              product.topProduct
+                ? "Von Top-Produkten entfernen"
+                : "Als Top-Produkt markieren"
+            }
+          >
+            <MdVerified
+              size={14}
+              className={`sm:w-[18px] sm:h-[18px] ${product.topProduct ? "" : "text-gray-400"}`}
+            />
+            <span className="hidden sm:inline">{product.topProduct ? "Top entfernen" : "Als Top"}</span>
+            <span className="sm:hidden">Top</span>
+          </button>
+
+          {/* Visibility Toggle */}
+          <button
+            className={`flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 transition-all duration-200 font-medium text-xs sm:text-sm ${
+              product.visible
+                ? "bg-primary-600 border-primary-600 text-white shadow-md hover:bg-primary-700"
+                : "bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600"
+            }`}
+            onClick={() => handleToggleVisible(product)}
+            title={product.visible ? "Produkt verstecken" : "Produkt anzeigen"}
+          >
+            {product.visible ? (
+              <FiEye size={14} className="sm:w-[18px] sm:h-[18px]" />
+            ) : (
+              <FiEyeOff size={14} className="sm:w-[18px] sm:h-[18px] text-gray-400" />
+            )}
+            <span className="hidden sm:inline">{product.visible ? "Sichtbar" : "Versteckt"}</span>
+            <span className="sm:hidden">{product.visible ? "Ja" : "Nein"}</span>
+          </button>
+
+          {/* Edit Button */}
+          <button
+            className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600 transition-all duration-200 font-medium text-xs sm:text-sm"
+            onClick={() => handleEdit(product)}
+            title="Produkt bearbeiten"
+          >
+            <FiEdit2 size={14} className="sm:w-[18px] sm:h-[18px]" />
+            <span>Bearbeiten</span>
+          </button>
+
+          {/* Delete Button */}
+          <button
+            className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 bg-primary-600 border-primary-600 text-white hover:bg-primary-700 transition-all duration-200 font-medium text-xs sm:text-sm shadow-md"
+            onClick={() => handleDelete(product)}
+            title="Produkt löschen"
+          >
+            <FiTrash2 size={14} className="sm:w-[18px] sm:h-[18px]" />
+            <span>Löschen</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+        {!product.visible && (
+          <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center backdrop-blur-sm">
+            <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+              🚫 Versteckt
+            </span>
           </div>
+        )}
+        {/* Price Tag */}
+        <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
+          <span className="text-primary-600 font-bold text-xl">
+            {product.options[0]?.price
+              ? `€${product.options[0].price.toFixed(2)}`
+              : "N/A"}
+          </span>
+        </div>
+      </div>
+
+      {/* Product Info */}
+      <div className="p-5">
+        <h3 className="font-bold text-lg mb-2 text-gray-900 line-clamp-1">
+          {product.name}
+        </h3>
+        <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed min-h-[40px]">
+          {product.description}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2 pt-4 border-t border-gray-100">
+          {/* Top Product Toggle */}
+          <button
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium text-sm ${
+              product.topProduct
+                ? "bg-primary-600 border-primary-600 text-white shadow-md hover:bg-primary-700"
+                : "bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600"
+            }`}
+            onClick={() => handleToggleTop(product)}
+            title={
+              product.topProduct
+                ? "Von Top-Produkten entfernen"
+                : "Als Top-Produkt markieren"
+            }
+          >
+            <MdVerified
+              size={18}
+              className={product.topProduct ? "" : "text-gray-400"}
+            />
+            <span>{product.topProduct ? "Top entfernen" : "Als Top"}</span>
+          </button>
+
+          {/* Visibility Toggle */}
+          <button
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium text-sm ${
+              product.visible
+                ? "bg-primary-600 border-primary-600 text-white shadow-md hover:bg-primary-700"
+                : "bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600"
+            }`}
+            onClick={() => handleToggleVisible(product)}
+            title={product.visible ? "Produkt verstecken" : "Produkt anzeigen"}
+          >
+            {product.visible ? (
+              <FiEye size={18} />
+            ) : (
+              <FiEyeOff size={18} className="text-gray-400" />
+            )}
+            <span>{product.visible ? "Sichtbar" : "Versteckt"}</span>
+          </button>
+
+          {/* Edit Button */}
+          <button
+            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600 transition-all duration-200 font-medium text-sm"
+            onClick={() => handleEdit(product)}
+            title="Produkt bearbeiten"
+          >
+            <FiEdit2 size={18} />
+            <span>Bearbeiten</span>
+          </button>
+
+          {/* Delete Button */}
+          <button
+            className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 bg-primary-600 border-primary-600 text-white hover:bg-primary-700 transition-all duration-200 font-medium text-xs sm:text-sm shadow-md"
+            onClick={() => handleDelete(product)}
+            title="Produkt löschen"
+          >
+            <FiTrash2 size={14} className="sm:w-[18px] sm:h-[18px]" />
+            <span>Löschen</span>
+          </button>
         </div>
       </div>
     </div>
   );
 
+  if (loading) {
+    return <LoadingSpinner fullScreen message="Produkte werden geladen..." />;
+  }
+
   return (
-    <div className="p-4 bg-gray-100 min-h-screen">
-      <Card className="mb-4 border-0 shadow-sm">
-        <CardBody>
-          <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">
-              Products
-            </h2>
-            <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
-              <div className="relative flex items-center">
+    <div className="animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8 border border-gray-100">
+        {/* Header */}
+        <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-gray-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 sm:gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                Produkte verwalten
+              </h2>
+              <p className="text-gray-600 text-xs sm:text-sm">
+                Erstellen, bearbeiten und verwalten Sie Ihre Produkte
+              </p>
+            </div>
+
+            {/* Search Bar and Add Button Row */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+              {/* Search Bar */}
+              <div className="relative flex-1 sm:min-w-[280px] lg:min-w-[320px]">
                 <Input
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Suche nach Produktname..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="pl-10 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full text-sm"
                 />
-                <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiSearch
+                  className="absolute left-3 sm:left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
               </div>
-              <Button
-                color="danger"
-                className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out flex items-center justify-center"
+
+              {/* Add Product Button */}
+              <button
+                className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-2 sm:py-2.5 px-4 sm:px-5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap text-sm sm:text-base"
                 onClick={() => setSidebarOpen(true)}
               >
-                <span className="flex items-center justify-center">
-                  <FiPlus className="mr-2" /> Add Product
-                </span>
-              </Button>
+                <FiPlus size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span>Neues Produkt</span>
+              </button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {categories.map((category) => (
-              <Button
-                key={category.name}
-                color={activeCategory === category.name ? "danger" : "light"}
-                className={`rounded-full px-4 py-2 text-sm font-medium border flex items-center justify-center space-x-2 ${
-                  activeCategory === category.name
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
-                } transition duration-300 ease-in-out`}
-                onClick={() => setActiveCategory(category.name)}
-              >
-                <span>{category.name}</span> <Badge
-  color="danger"
-  pill
->
-  {category.count}
-</Badge>
-              </Button>
-            ))}
+        </div>
+
+        {/* Category Filter */}
+        <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-100">
+          <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center">
+            <FiList className="mr-2" size={14} />
+            Kategorien filtern
+          </h3>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {categories.map((category) => {
+              const isActive = activeCategory === category.name;
+              return (
+                <button
+                  key={category.name}
+                  className={`rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-xs sm:text-sm font-semibold border-2 transition-all duration-200 flex items-center gap-1.5 sm:gap-2 ${
+                    isActive
+                      ? "bg-primary-600 text-white border-primary-600 shadow-md hover:bg-primary-700"
+                      : "bg-white text-gray-700 border-gray-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-600"
+                  }`}
+                  onClick={() => setActiveCategory(category.name)}
+                >
+                  <span>{category.name}</span>
+                  <span
+                    className={`text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full ${
+                      isActive
+                        ? "bg-white/25 text-white"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {category.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+        </div>
+
+        {/* Products Grid */}
+        {activeCategory === "Top" ? (
+          topProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+              {topProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
             </div>
           ) : (
-            <div>
-              {activeCategory === "Top" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {topProducts.map((product) => (
-                    <ProductCard key={product._id} product={product} />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredProducts.map((product) => (
-                    <ProductCard key={product._id} product={product} />
-                  ))}
-                </div>
-              )}
+            <div className="text-center py-12 sm:py-16">
+              <p className="text-gray-500 text-base sm:text-lg">
+                Keine Top-Produkte gefunden
+              </p>
             </div>
-          )}
-        </CardBody>
-      </Card>
+          )
+        ) : filteredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+            {filteredProducts.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 sm:py-16">
+            <p className="text-gray-500 text-base sm:text-lg">Keine Produkte gefunden</p>
+          </div>
+        )}
+      </div>
 
       {sidebarOpen && (
         <ProductSidebar
@@ -281,40 +499,40 @@ const Products = () => {
         />
       )}
 
-      <Modal isOpen={modal} toggle={toggleModal}>
-        <ModalHeader toggle={toggleModal} className="border-b-0 pb-0">
-          <span className="text-xl font-semibold text-gray-800">
+      <Modal isOpen={modal} toggle={toggleModal} centered>
+        <ModalHeader toggle={toggleModal} className="border-0">
+          <span className="text-xl font-bold text-gray-900">
             {modalAction === "delete"
-              ? "Confirm Delete"
+              ? "Löschen bestätigen"
               : modalAction === "toggleTop"
-                ? "Confirm Top Item Toggle"
-                : "Confirm Visibility Change"}
+                ? "Top-Status ändern"
+                : "Sichtbarkeit ändern"}
           </span>
         </ModalHeader>
-        <ModalBody className="pt-4">
-          <p className="text-gray-600">
+        <ModalBody className="pt-2 pb-4">
+          <p className="text-gray-700 leading-relaxed">
             {modalAction === "delete"
-              ? `Are you sure you want to delete the product: ${modalProduct?.name}?`
+              ? `Möchten Sie das Produkt "${modalProduct?.name}" wirklich löschen?`
               : modalAction === "toggleTop"
-                ? `Are you sure you want to ${modalProduct?.topProduct ? "remove" : "set"} the product: ${modalProduct?.name} as a top item?`
-                : `Are you sure you want to ${modalProduct?.visible ? "hide" : "show"} the product: ${modalProduct?.name}?`}
+                ? `Möchten Sie "${modalProduct?.name}" ${modalProduct?.topProduct ? "von den Top-Produkten entfernen" : "als Top-Produkt markieren"}?`
+                : `Möchten Sie "${modalProduct?.name}" ${modalProduct?.visible ? "verstecken" : "anzeigen"}?`}
           </p>
         </ModalBody>
-        <ModalFooter className="border-t-0 pt-0">
+        <ModalFooter className="border-0 pt-0">
+          <Button
+            color="light"
+            onClick={toggleModal}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-xl transition-all duration-200"
+          >
+            Abbrechen
+          </Button>
           <Button
             color="danger"
             onClick={confirmAction}
             disabled={processing}
-            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out"
+            className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-2 px-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 ml-2"
           >
-            {processing ? "Processing..." : "Confirm"}
-          </Button>
-          <Button
-            color="secondary"
-            onClick={toggleModal}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out ml-2"
-          >
-            Cancel
+            {processing ? "Wird verarbeitet..." : "Bestätigen"}
           </Button>
         </ModalFooter>
       </Modal>

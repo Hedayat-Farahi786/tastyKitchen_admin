@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardBody, Button, Form, FormGroup, Label, Input, Modal, ModalHeader, ModalBody, ModalFooter } from 'reactstrap';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch } from 'react-icons/fi';
+import React, { useEffect, useState } from "react";
+import { Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
+import { FiEdit2, FiTrash2, FiPlus, FiSearch } from "react-icons/fi";
+import { API_BASE_URL } from "../config/api";
+import LoadingSpinner from "./LoadingSpinner";
 
 const Testimonials = () => {
   const [testimonials, setTestimonials] = useState([]);
@@ -9,8 +11,17 @@ const Testimonials = () => {
   const [modal, setModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
-  const [currentTestimonial, setCurrentTestimonial] = useState({ _id: "", firstName: "", lastName: "", content: "" });
-  const [newTestimonial, setNewTestimonial] = useState({ firstName: "", lastName: "", content: "" });
+  const [currentTestimonial, setCurrentTestimonial] = useState({
+    _id: "",
+    firstName: "",
+    lastName: "",
+    content: "",
+  });
+  const [newTestimonial, setNewTestimonial] = useState({
+    firstName: "",
+    lastName: "",
+    content: "",
+  });
   const [testimonialToDelete, setTestimonialToDelete] = useState(null);
 
   useEffect(() => {
@@ -19,7 +30,7 @@ const Testimonials = () => {
 
   const fetchTestimonials = () => {
     setLoading(true);
-    fetch("https://tastykitchen-backend.vercel.app/testimonials")
+    fetch(`${API_BASE_URL}/testimonials`)
       .then((response) => response.json())
       .then((data) => {
         setTestimonials(data);
@@ -41,17 +52,20 @@ const Testimonials = () => {
   const handleInputChange = (e, isEditing = false) => {
     const { name, value } = e.target;
     if (isEditing) {
-      setCurrentTestimonial(prev => ({ ...prev, [name]: value }));
+      setCurrentTestimonial((prev) => ({ ...prev, [name]: value }));
     } else {
-      setNewTestimonial(prev => ({ ...prev, [name]: value }));
+      setNewTestimonial((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleAddTestimonial = () => {
     const newAuthor = `${newTestimonial.firstName} ${newTestimonial.lastName}`;
-    const newTestimonialData = { author: newAuthor, content: newTestimonial.content };
+    const newTestimonialData = {
+      author: newAuthor,
+      content: newTestimonial.content,
+    };
 
-    fetch("https://tastykitchen-backend.vercel.app/testimonials", {
+    fetch(`${API_BASE_URL}/testimonials`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newTestimonialData),
@@ -66,9 +80,12 @@ const Testimonials = () => {
 
   const handleEditTestimonial = () => {
     const updatedAuthor = `${currentTestimonial.firstName} ${currentTestimonial.lastName}`;
-    const updatedTestimonialData = { ...currentTestimonial, author: updatedAuthor };
+    const updatedTestimonialData = {
+      ...currentTestimonial,
+      author: updatedAuthor,
+    };
 
-    fetch(`https://tastykitchen-backend.vercel.app/testimonials/${currentTestimonial._id}`, {
+    fetch(`${API_BASE_URL}/testimonials/${currentTestimonial._id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedTestimonialData),
@@ -81,7 +98,7 @@ const Testimonials = () => {
   };
 
   const handleDeleteTestimonial = () => {
-    fetch(`https://tastykitchen-backend.vercel.app/testimonials/${testimonialToDelete._id}`, {
+    fetch(`${API_BASE_URL}/testimonials/${testimonialToDelete._id}`, {
       method: "DELETE",
     })
       .then(() => {
@@ -109,201 +126,322 @@ const Testimonials = () => {
     const day = date.getDate();
     const month = date.getMonth() + 1; // Months are zero-indexed
     const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+
     return `${day}.${month}.${year} - ${hours}:${minutes}`;
   };
 
   const TestimonialCard = ({ testimonial }) => (
-    <Card className="h-full shadow-sm hover:shadow-md transition-shadow duration-300 border-0">
-      <CardBody className="flex flex-col">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="bg-red-50 rounded-full w-10 h-10 flex items-center justify-center">
-            <span className="text-sm font-semibold text-red-600">
-              {testimonial.author.split(" ").map((name) => name.charAt(0).toUpperCase()).join("")}
-            </span>
-          </div>
-          <div className='flex flex-col'>
-            <h3 className="font-semibold text-lg text-gray-800">{testimonial.author}</h3>
-            <span className="text-sm text-gray-500">{formatDate(testimonial.createdAt)}</span>
-          </div>
+    <div className="bg-white rounded-lg border border-gray-300 p-5 hover:border-primary-300 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="bg-primary-50 rounded-full w-12 h-12 flex items-center justify-center flex-shrink-0">
+          <span className="text-lg font-bold text-primary-600">
+            {testimonial.author
+              .split(" ")
+              .map((name) => name.charAt(0).toUpperCase())
+              .join("")}
+          </span>
         </div>
-        <p className="text-gray-600 mb-4 flex-grow">{testimonial.content}</p>
-        <div className="flex justify-end space-x-2">
-          <Button color="light" className="p-2" onClick={() => handleEditButtonClick(testimonial)}>
-            <FiEdit2 size={18} />
-          </Button>
-          <Button color="danger" className="p-2" onClick={() => handleDeleteButtonClick(testimonial)}>
-            <FiTrash2 size={18} />
-          </Button>
+        <div className="flex flex-col flex-grow">
+          <h3 className="font-semibold text-lg text-gray-900">
+            {testimonial.author}
+          </h3>
+          <span className="text-sm text-gray-500">
+            {formatDate(testimonial.createdAt)}
+          </span>
         </div>
-      </CardBody>
-    </Card>
+      </div>
+      <p className="text-gray-600 mb-4 flex-grow line-clamp-4">
+        {testimonial.content}
+      </p>
+      <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+        <button
+          onClick={() => handleEditButtonClick(testimonial)}
+          className="p-2 hover:bg-gray-100 text-gray-600 hover:text-primary-600 rounded-lg transition-all"
+          title="Bearbeiten"
+        >
+          <FiEdit2 size={18} />
+        </button>
+        <button
+          onClick={() => handleDeleteButtonClick(testimonial)}
+          className="p-2 hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-lg transition-all"
+          title="Löschen"
+        >
+          <FiTrash2 size={18} />
+        </button>
+      </div>
+    </div>
   );
 
+  if (loading) {
+    return (
+      <LoadingSpinner fullScreen message="Bewertungen werden geladen..." />
+    );
+  }
+
   return (
-    <div className="p-4 bg-gray-50 min-h-screen">
-      <Card className="mb-4 shadow-sm border-0">
-        <CardBody>
-          <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Testimonials</h2>
-            <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
-              <div className="relative flex items-center">
-                <Input
-                  type="text"
-                  placeholder="Search by author..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-              <Button 
-                color="danger" 
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out flex items-center justify-center"
-                onClick={toggleModal}
-              >
-               <span className="flex items-center justify-center">
-               <FiPlus className="mr-2" /> Add Testimonial
-               </span>
-              </Button>
-            </div>
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Bewertungen</h1>
+        <p className="text-gray-600">Kundenmeinungen verwalten</p>
+      </div>
+
+      {/* Actions Bar */}
+      <div className="bg-white rounded-lg border border-gray-300 p-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <FiSearch
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Nach Autor suchen..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            />
           </div>
-          
-          {loading ? (
-            <div className="animate-pulse space-y-4">
-              {[...Array(3)].map((_, index) => (
-                <div key={index} className="h-48 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTestimonials.map((testimonial) => (
-                <TestimonialCard key={testimonial._id} testimonial={testimonial} />
-              ))}
-            </div>
-          )}
-        </CardBody>
-      </Card>
+          <button
+            onClick={toggleModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+          >
+            <FiPlus size={18} />
+            <span>Neue Bewertung</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Testimonials Grid */}
+      {filteredTestimonials.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-300 p-12 text-center">
+          <div className="bg-gray-100 p-6 rounded-full inline-block mb-4">
+            <FiSearch className="text-gray-400 text-5xl" />
+          </div>
+          <p className="text-gray-900 font-semibold text-lg mb-2">
+            Keine Bewertungen gefunden
+          </p>
+          <p className="text-gray-500 text-sm">
+            {searchTerm
+              ? "Versuchen Sie einen anderen Suchbegriff"
+              : "Fügen Sie die erste Bewertung hinzu"}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTestimonials.map((testimonial) => (
+            <TestimonialCard key={testimonial._id} testimonial={testimonial} />
+          ))}
+        </div>
+      )}
 
       {/* Add New Modal */}
-      <Modal isOpen={modal} toggle={toggleModal}>
-        <ModalHeader toggle={toggleModal} className="border-b-0">Add New Testimonial</ModalHeader>
-        <ModalBody>
-          <Form>
-            <FormGroup>
-              <Label for="firstName" className="text-gray-700">First Name</Label>
-              <Input
+      <Modal isOpen={modal} toggle={toggleModal} size="lg">
+        <ModalHeader toggle={toggleModal} className="border-b">
+          <span className="text-xl font-bold text-gray-900">
+            Neue Bewertung hinzufügen
+          </span>
+        </ModalHeader>
+        <ModalBody className="p-6">
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="firstName"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Vorname *
+              </label>
+              <input
                 type="text"
                 name="firstName"
                 id="firstName"
                 value={newTestimonial.firstName}
                 onChange={(e) => handleInputChange(e)}
-                placeholder="Enter first name"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="z.B. Max"
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5 px-3"
                 required
               />
-            </FormGroup>
-            <FormGroup>
-              <Label for="lastName" className="text-gray-700">Last Name</Label>
-              <Input
+            </div>
+            <div>
+              <label
+                htmlFor="lastName"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Nachname *
+              </label>
+              <input
                 type="text"
                 name="lastName"
                 id="lastName"
                 value={newTestimonial.lastName}
                 onChange={(e) => handleInputChange(e)}
-                placeholder="Enter last name"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="z.B. Mustermann"
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5 px-3"
                 required
               />
-            </FormGroup>
-            <FormGroup>
-              <Label for="content" className="text-gray-700">Content</Label>
-              <Input
-                type="textarea"
+            </div>
+            <div>
+              <label
+                htmlFor="content"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Bewertungstext *
+              </label>
+              <textarea
                 name="content"
                 id="content"
                 value={newTestimonial.content}
                 onChange={(e) => handleInputChange(e)}
-                placeholder="Enter testimonial content"
-                rows="5"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="Bewertungstext hier eingeben..."
+                rows={5}
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5 px-3 resize-none"
                 required
               />
-            </FormGroup>
-          </Form>
+            </div>
+          </div>
         </ModalBody>
-        <ModalFooter className="border-t-0">
-          <Button color="secondary" onClick={toggleModal} className="bg-gray-200 hover:bg-gray-300 text-gray-700 border-0">Cancel</Button>
-          <Button color="danger" onClick={handleAddTestimonial} disabled={!isFormValid(newTestimonial)} className="bg-red-600 hover:bg-red-700 border-0">Add</Button>
+        <ModalFooter className="border-t bg-gray-50 gap-2">
+          <button
+            onClick={toggleModal}
+            className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleAddTestimonial}
+            disabled={!isFormValid(newTestimonial)}
+            className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <FiPlus size={18} />
+            <span>Hinzufügen</span>
+          </button>
         </ModalFooter>
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={editModal} toggle={toggleEditModal}>
-        <ModalHeader toggle={toggleEditModal} className="border-b-0">Edit Testimonial</ModalHeader>
-        <ModalBody>
-          <Form>
-            <FormGroup>
-              <Label for="firstName" className="text-gray-700">First Name</Label>
-              <Input
+      <Modal isOpen={editModal} toggle={toggleEditModal} size="lg">
+        <ModalHeader toggle={toggleEditModal} className="border-b">
+          <span className="text-xl font-bold text-gray-900">
+            Bewertung bearbeiten
+          </span>
+        </ModalHeader>
+        <ModalBody className="p-6">
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="editFirstName"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Vorname *
+              </label>
+              <input
                 type="text"
                 name="firstName"
-                id="firstName"
+                id="editFirstName"
                 value={currentTestimonial.firstName}
                 onChange={(e) => handleInputChange(e, true)}
-                placeholder="Enter first name"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="z.B. Max"
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5 px-3"
                 required
               />
-            </FormGroup>
-            <FormGroup>
-              <Label for="lastName" className="text-gray-700">Last Name</Label>
-              <Input
+            </div>
+            <div>
+              <label
+                htmlFor="editLastName"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Nachname *
+              </label>
+              <input
                 type="text"
                 name="lastName"
-                id="lastName"
+                id="editLastName"
                 value={currentTestimonial.lastName}
                 onChange={(e) => handleInputChange(e, true)}
-                placeholder="Enter last name"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="z.B. Mustermann"
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5 px-3"
                 required
               />
-            </FormGroup>
-            <FormGroup>
-              <Label for="content" className="text-gray-700">Content</Label>
-              <Input
-                type="textarea"
+            </div>
+            <div>
+              <label
+                htmlFor="editContent"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Bewertungstext *
+              </label>
+              <textarea
                 name="content"
-                id="content"
+                id="editContent"
                 value={currentTestimonial.content}
                 onChange={(e) => handleInputChange(e, true)}
-                placeholder="Enter testimonial content"
-                rows="5"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="Bewertungstext hier eingeben..."
+                rows={5}
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5 px-3 resize-none"
                 required
               />
-            </FormGroup>
-          </Form>
+            </div>
+          </div>
         </ModalBody>
-        <ModalFooter className="border-t-0">
-          <Button color="secondary" onClick={toggleEditModal} className="bg-gray-200 hover:bg-gray-300 text-gray-700 border-0">Cancel</Button>
-          <Button color="danger" onClick={handleEditTestimonial} disabled={!isFormValid(currentTestimonial)} className="bg-red-600 hover:bg-red-700 border-0">Save</Button>
+        <ModalFooter className="border-t bg-gray-50 gap-2">
+          <button
+            onClick={toggleEditModal}
+            className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleEditTestimonial}
+            disabled={!isFormValid(currentTestimonial)}
+            className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <FiEdit2 size={18} />
+            <span>Aktualisieren</span>
+          </button>
         </ModalFooter>
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={deleteModal} toggle={toggleDeleteModal}>
-        <ModalHeader toggle={toggleDeleteModal} className="border-b-0">Delete Testimonial</ModalHeader>
-        <ModalBody>
-          <p className="text-gray-700">
-            Are you sure you want to delete the testimonial from "{testimonialToDelete?.author}"?
-          </p>
+      <Modal isOpen={deleteModal} toggle={toggleDeleteModal} size="md">
+        <ModalHeader toggle={toggleDeleteModal} className="border-b">
+          <span className="text-xl font-bold text-gray-900">
+            Bewertung löschen
+          </span>
+        </ModalHeader>
+        <ModalBody className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <FiTrash2 size={24} className="text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-900 font-medium mb-2">Sind Sie sicher?</p>
+              <p className="text-gray-600">
+                Möchten Sie die Bewertung von "
+                <span className="font-semibold">
+                  {testimonialToDelete?.author}
+                </span>
+                " wirklich löschen? Diese Aktion kann nicht rückgängig gemacht
+                werden.
+              </p>
+            </div>
+          </div>
         </ModalBody>
-        <ModalFooter className="border-t-0">
-          <Button color="secondary" onClick={toggleDeleteModal} className="bg-gray-200 hover:bg-gray-300 text-gray-700 border-0">Cancel</Button>
-          <Button color="danger" onClick={handleDeleteTestimonial} className="bg-red-600 hover:bg-red-700 border-0">Delete</Button>
+        <ModalFooter className="border-t bg-gray-50 gap-2">
+          <button
+            onClick={toggleDeleteModal}
+            className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleDeleteTestimonial}
+            className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
+          >
+            <FiTrash2 size={18} />
+            <span>Ja, löschen</span>
+          </button>
         </ModalFooter>
       </Modal>
     </div>

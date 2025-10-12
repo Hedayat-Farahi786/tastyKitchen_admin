@@ -1,93 +1,188 @@
 import React, { useState, useEffect } from "react";
-import { Button } from "reactstrap";
-import { FiPackage, FiEye, FiEyeOff } from "react-icons/fi";
-import { MdEuroSymbol } from "react-icons/md";
+import { FiCheckCircle, FiRotateCcw } from "react-icons/fi";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import io from "socket.io-client";
-const socket = io("https://tastykitchen-websocket.up.railway.app");
+import API_BASE_URL, { WEBSOCKET_URL } from "../config/api";
 import notification from "../assets/notification-sound.mp3";
 import { RxDragHandleDots2 } from "react-icons/rx";
+import LoadingSpinner from "./LoadingSpinner";
+import ErrorMessage from "./ErrorMessage";
 
+// Custom Euro Icon Component
+const EuroIcon = ({ className = "" }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M19 6.3C17.5 4.9 15.5 4 13.2 4 8.4 4 4.5 7.9 4.5 12.8S8.4 21.5 13.2 21.5c2.3 0 4.3-.9 5.8-2.3" />
+    <line x1="3" y1="10" x2="11" y2="10" />
+    <line x1="3" y1="14" x2="11" y2="14" />
+  </svg>
+);
 
-const OrderItem = React.memo(({ order, index, isDone, onToggle }) => (
-  <Draggable draggableId={order._id} index={index}>
-    {(provided, snapshot) => (
-      <div
-        ref={provided.innerRef}
-        {...provided.draggableProps}
-        className={`bg-gray-50 p-4 rounded-lg shadow-sm transition-all ${
-          snapshot.isDragging ? "shadow-lg bg-gray-100" : ""
-        } ${isDone ? "opacity-50" : ""}`}
-      >
-        <div className="flex justify-between items-start">
+const socket = io(WEBSOCKET_URL);
+
+interface OrderItemProps {
+  order: any;
+  index: number;
+  isDone: boolean;
+  onToggle: (orderId: string) => void;
+}
+
+const OrderItem = React.memo<OrderItemProps>(
+  ({ order, index, isDone, onToggle }) => {
+    return (
+      <Draggable draggableId={order._id} index={index}>
+        {(provided, snapshot) => (
           <div
-            {...provided.dragHandleProps}
-            className="mr-3 mt-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing p-1"
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            className={`bg-white rounded-lg border transition-all duration-300 relative ${
+              snapshot.isDragging
+                ? "shadow-2xl border-primary-500 scale-[1.02] rotate-2"
+                : isDone
+                  ? "border-primary-200 bg-primary-50 opacity-75"
+                  : "border-gray-300 hover:border-primary-300 hover:shadow-lg"
+            }`}
           >
-            <RxDragHandleDots2 size={24} />
-          </div>
-
-          <div className="flex-grow">
-            {/* Rest of the order content remains the same */}
-            <p className="font-bold text-gray-800">
-              <span className="text-main">Order</span> #{order.orderNumber || "N/A"}
-            </p>
-            <div className="mt-1">
-              {order.products?.map((product, idx) => (
-                <div key={idx} className="mt-3 flex items-start space-x-4">
-                  <img
-                    src={product.productId.image}
-                    alt="product"
-                    className="rounded w-14 h-14 object-cover"
-                  />
-                  <div>
-                    <span className="font-semibold">
-                      {product.productId.name} x{product.quantity}
-                    </span>
-                    <div className="flex flex-col space-y-0">
-                      {product.extras.map((extra) => {
-                        const name = product?.productId?.menuId?.extras.find(
-                          (ext) => ext._id === extra
-                        )?.name;
-                        return (
-                          <span
-                            key={extra}
-                            className="text-xs md:text-sm text-gray-600"
-                          >
-                            {name}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
+            {/* Blinking Indicator for Pending Orders */}
+            {!isDone && (
+              <div className="absolute -top-2 -right-2 z-10">
+                <div className="relative">
+                  <div className="w-4 h-4 bg-primary-600 rounded-full animate-ping absolute"></div>
+                  <div className="w-4 h-4 bg-primary-600 rounded-full relative"></div>
                 </div>
-              ))}
-            </div>
-            {order?.delivery?.note && (
-              <div className="text-sm text-gray-500 w-full border-t mt-3 py-2">
-                <span className="font-semibold">Bestellzettel:</span>
-                <p>{order.delivery.note}</p>
               </div>
             )}
+
+            <div className="p-4 sm:p-5">
+              <div className="flex items-start gap-2 sm:gap-4">
+                {/* Drag Handle */}
+                <div
+                  {...provided.dragHandleProps}
+                  className="text-gray-300 hover:text-primary-500 cursor-grab active:cursor-grabbing transition-colors mt-1"
+                >
+                  <RxDragHandleDots2 size={20} className="sm:w-6 sm:h-6" />
+                </div>
+
+                {/* Order Content */}
+                <div className="flex-grow">
+                  {/* Order Number & Status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-xl sm:text-2xl font-bold text-primary-600">
+                        #{order.orderNumber || "N/A"}
+                      </span>
+                      {isDone && (
+                        <span className="flex items-center text-primary-600 text-xs font-semibold bg-primary-100 px-2 sm:px-3 py-1 rounded-full">
+                          <FiCheckCircle className="mr-1" size={12} /> Erledigt
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <div className="text-xl sm:text-2xl font-bold text-gray-900">
+                        €{(Number(order.totalPrice) || 0).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Products */}
+                  <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+                    {order.products?.map((product, idx) => {
+                      const productKey =
+                        product.productId?._id || `product-${idx}`;
+                      return (
+                        <div
+                          key={productKey}
+                          className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg"
+                        >
+                          <img
+                            src={product.productId.image}
+                            alt="product"
+                            className="rounded-lg w-12 h-12 sm:w-16 sm:h-16 object-cover flex-shrink-0"
+                          />
+                          <div className="flex-grow min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                                {product.productId.name}
+                              </span>
+                              <span className="text-primary-600 font-bold text-base sm:text-lg px-2 sm:px-2.5 py-0.5 bg-primary-100 rounded-md flex-shrink-0">
+                                x{product.quantity}
+                              </span>
+                            </div>
+                            {product.extras.length > 0 && (
+                              <div className="flex flex-wrap gap-1 sm:gap-1.5 mt-1 sm:mt-2">
+                                {product.extras.map((extra) => {
+                                  const menuExtras =
+                                    product?.productId?.menuId?.extras || [];
+                                  const extraItem = menuExtras.find(
+                                    (ext) => ext._id === extra
+                                  );
+                                  const name = extraItem?.name;
+                                  return (
+                                    <span
+                                      key={extra}
+                                      className="text-xs bg-white text-gray-600 px-1.5 sm:px-2 py-0.5 rounded border border-gray-200"
+                                    >
+                                      + {name}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Note */}
+                  {order?.delivery?.note && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
+                      <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                        📝 Notiz
+                      </span>
+                      <p className="text-gray-700 text-xs sm:text-sm mt-1 break-words">
+                        {order.delivery.note}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  <button
+                    onClick={() => onToggle(order._id)}
+                    className={`w-full font-semibold py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-95 ${
+                      isDone
+                        ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        : "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white shadow-md hover:shadow-lg"
+                    }`}
+                  >
+                    {isDone ? (
+                      <>
+                        <FiRotateCcw size={16} className="sm:w-5 sm:h-5" />
+                        <span>Rückgängig machen</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiCheckCircle size={16} className="sm:w-5 sm:h-5" />
+                        <span>Als erledigt markieren</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col items-end">
-            <p className="font-semibold text-gray-800 mt-2">
-              €{(Number(order.totalPrice) || 0).toFixed(2)}
-            </p>
-            <Button
-              color={isDone ? "warning" : "success"}
-              size="sm"
-              className="mt-2"
-              onClick={() => onToggle(order._id)}
-            >
-              {isDone ? "Undone" : "Done"}
-            </Button>
-          </div>
-        </div>
-      </div>
-    )}
-  </Draggable>
-));
+        )}
+      </Draggable>
+    );
+  }
+);
 
 const TodaysOrders = () => {
   const [pendingOrders, setPendingOrders] = useState([]);
@@ -96,6 +191,24 @@ const TodaysOrders = () => {
   const [error, setError] = useState(null);
   const [showDoneOrders, setShowDoneOrders] = useState(false);
   const [audio] = useState(new Audio(notification));
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().then((permission) => {
+        console.log("Notification permission:", permission);
+      });
+    }
+
+    // Initialize socket connection status
+    setSocketConnected(socket.connected);
+
+    // Try to connect if not already connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+  }, []);
 
   useEffect(() => {
     fetchTodaysOrders();
@@ -108,16 +221,47 @@ const TodaysOrders = () => {
       });
     };
 
-    socket.on("new-order", (newOrder) => {
+    // Listen for new orders from socket (using underscore for compatibility with Railway)
+    socket.on("new_order", (newOrder) => {
+      console.log("New order received:", newOrder);
       playSound();
+
+      // Show browser notification if supported
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Neue Bestellung!", {
+          body: `Bestellung #${newOrder.orderNumber} - €${(Number(newOrder.totalPrice) || 0).toFixed(2)}`,
+          icon: "/favicons/favicon-32x32.png",
+          tag: newOrder._id,
+        });
+      }
+
       setPendingOrders((prevPendingOrders) => [
         { ...newOrder, isDone: false },
         ...prevPendingOrders,
       ]);
     });
 
+    // Listen for socket connection events
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+      setSocketConnected(true);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setSocketConnected(false);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+      setSocketConnected(false);
+    });
+
     return () => {
-      socket.off("new-order");
+      socket.off("new_order");
+      socket.off("connect");
+      socket.off("connect_error");
+      socket.off("disconnect");
     };
   }, [audio]);
 
@@ -125,9 +269,7 @@ const TodaysOrders = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        "https://tastykitchen-backend.vercel.app/orders/today"
-      );
+      const response = await fetch(`${API_BASE_URL}/orders/today`);
       if (!response.ok) {
         throw new Error("Failed to fetch orders");
       }
@@ -208,119 +350,172 @@ const TodaysOrders = () => {
   };
 
   if (error) {
+    return <ErrorMessage message={error} onRetry={fetchTodaysOrders} />;
+  }
+
+  if (loading) {
     return (
-      <div className="h-full shadow-sm">
-        <div className="p-4">
-          <h3 className="text-xl font-semibold mb-4 text-gray-800">
-            Today's Orders
-          </h3>
-          <p className="text-red-500">Error: {error}</p>
-        </div>
-      </div>
+      <LoadingSpinner
+        fullScreen
+        message="Heutige Bestellungen werden geladen..."
+      />
     );
   }
 
   return (
-    <div className="h-max shadow-sm w-10/12 mx-auto bg-white rounded-lg">
-      <div className="p-6 mt-10 md:mt-0">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-800">
-            Today's Orders
-          </h3>
-          <Button
-            color="light"
-            className="flex items-center"
-            onClick={() => setShowDoneOrders(!showDoneOrders)}
-          >
-            <span className="flex items-center">
-              {showDoneOrders ? (
-                <FiEyeOff className="mr-2" />
-              ) : (
-                <FiEye className="mr-2" />
-              )}
-              {showDoneOrders ? "Show Pending" : "Show Done"}
+    <div className="max-w-7xl mx-auto p-3 sm:p-4 md:p-6 animate-fade-in">
+      {/* Header */}
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Heutige Bestellungen
+          </h1>
+          {/* Socket Connection Status */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${socketConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+            ></div>
+            <span className="text-xs sm:text-sm text-gray-600">
+              {socketConnected ? "Live verbunden" : "Offline"}
             </span>
-          </Button>
+          </div>
+        </div>
+        <p className="text-sm sm:text-base text-gray-600">
+          Verwalten Sie alle Bestellungen des Tages
+        </p>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        {/* Pending Orders */}
+        <div className="bg-white rounded-lg border border-gray-300 p-4 sm:p-5 hover:border-primary-300 hover:shadow-md transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                Ausstehend
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {pendingOrders.length}
+              </p>
+            </div>
+            <div className="bg-primary-50 p-2 sm:p-3 rounded-lg">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm">
+                {pendingOrders.length}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {/* Stats cards remain the same */}
-              <div className="bg-orange-100 rounded-lg p-4 flex items-center space-x-2">
-                <FiPackage className="text-orange-500 text-3xl mr-3" />
-                <div className="flex flex-col">
-                  <span className="text-sm text-orange-500">Pending Orders</span>
-                  <span className="text-xl font-bold text-orange-700">
-                    {pendingOrders.length}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-blue-100 rounded-lg p-4 flex items-center space-x-2">
-                <FiPackage className="text-blue-500 text-3xl mr-3" />
-                <div className="flex flex-col">
-                  <span className="text-sm text-blue-500">Completed Orders</span>
-                  <span className="text-xl font-bold text-blue-700">
-                    {completedOrders.length}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-green-100 rounded-lg p-4 flex items-center space-x-2">
-                <MdEuroSymbol className="text-green-500 text-3xl mr-3" />
-                <div className="flex flex-col">
-                  <span className="text-sm text-green-500">Total Revenue</span>
-                  <span className="text-xl font-bold text-green-700">
-                    €{getTotalRevenue()}
-                  </span>
-                </div>
-              </div>
+        {/* Completed Orders */}
+        <div className="bg-white rounded-lg border border-gray-300 p-4 sm:p-5 hover:border-primary-300 hover:shadow-md transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                Erledigt
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {completedOrders.length}
+              </p>
             </div>
+            <div className="bg-primary-50 p-2 sm:p-3 rounded-lg">
+              <FiCheckCircle className="text-primary-600 text-xl sm:text-2xl" />
+            </div>
+          </div>
+        </div>
 
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-gray-700">
-                {showDoneOrders ? "Completed Orders" : "Pending Orders"}
-              </h4>
-              
-              <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="orders-list">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="space-y-3"
-                    >
-                      {(showDoneOrders ? completedOrders : pendingOrders).map(
-                        (order, index) => (
-                          <OrderItem
-                          key={order._id}
-                          order={order}
-                          index={index}
-                          isDone={order.isDone}
-                          onToggle={handleDoneToggle}
-                        />
-                        )
-                      )}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+        {/* Revenue */}
+        <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg p-4 sm:p-5 shadow-md hover:shadow-lg transition-all duration-300 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-primary-100 mb-1">
+                Tagesumsatz
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">
+                €{getTotalRevenue()}
+              </p>
+            </div>
+            <div className="bg-white bg-opacity-20 p-2 sm:p-3 rounded-lg">
+              <EuroIcon className="text-main w-7 h-7 sm:w-8 sm:h-8" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-              {(showDoneOrders ? completedOrders : pendingOrders).length === 0 && (
-                <p className="text-gray-500 text-center py-4">
-                  No {showDoneOrders ? "completed" : "pending"} orders to display.
-                </p>
+      {/* View Toggle */}
+      <div className="bg-white rounded-lg border border-gray-300 p-1.5 sm:p-2 mb-4 sm:mb-6 inline-flex w-full sm:w-auto">
+        <button
+          onClick={() => setShowDoneOrders(false)}
+          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md font-medium transition-all duration-200 text-xs sm:text-sm ${
+            !showDoneOrders
+              ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Ausstehend ({pendingOrders.length})
+        </button>
+        <button
+          onClick={() => setShowDoneOrders(true)}
+          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md font-medium transition-all duration-200 text-xs sm:text-sm ${
+            showDoneOrders
+              ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Erledigt ({completedOrders.length})
+        </button>
+      </div>
+
+      {/* Orders List */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="orders-list">
+          {(provided) => (
+            <div
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              className="space-y-3 sm:space-y-4"
+            >
+              {(showDoneOrders ? completedOrders : pendingOrders).map(
+                (order, index) => (
+                  <OrderItem
+                    key={order._id}
+                    order={order}
+                    index={index}
+                    isDone={order.isDone}
+                    onToggle={handleDoneToggle}
+                  />
+                )
+              )}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+
+      {/* Empty State */}
+      {(showDoneOrders ? completedOrders : pendingOrders).length === 0 && (
+        <div className="text-center py-12 sm:py-16">
+          <div className="bg-white rounded-lg border border-gray-300 p-8 sm:p-12 inline-block">
+            <div className="bg-gray-100 p-4 sm:p-6 rounded-full inline-block mb-3 sm:mb-4">
+              {showDoneOrders ? (
+                <FiCheckCircle className="text-gray-400 text-4xl sm:text-5xl" />
+              ) : (
+                <div className="text-gray-400 text-4xl sm:text-5xl font-bold">
+                  0
+                </div>
               )}
             </div>
-          </>
-        )}
-      </div>
+            <p className="text-gray-900 font-semibold text-base sm:text-lg mb-2">
+              Keine {showDoneOrders ? "erledigten" : "ausstehenden"}{" "}
+              Bestellungen
+            </p>
+            <p className="text-gray-500 text-xs sm:text-sm px-4">
+              {showDoneOrders
+                ? "Markieren Sie Bestellungen als erledigt, um sie hier zu sehen"
+                : "Neue Bestellungen erscheinen automatisch hier"}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

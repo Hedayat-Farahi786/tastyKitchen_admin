@@ -1,18 +1,133 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-@import 'bootstrap/dist/css/bootstrap.min.css';
-@import 'bootstrap-icons/font/bootstrap-icons.css';
+@import url("https://fonts.googleapis.com/css2?family=Lobster&family=Poppins:wght@200;300;400;500;600;700;800&display=swap");
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "bootstrap-icons/font/bootstrap-icons.css";
 
-*{
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.text-main{
-  color: #ff2929;
+html {
+  scroll-behavior: smooth;
 }
-.bg-main{
-  background: #ff2929;
+
+body {
+  font-family: "Poppins", sans-serif;
+  overflow-x: hidden;
+  background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
+}
+
+.text-main {
+  color: #e53935;
+}
+
+.bg-main {
+  background: #e53935;
+}
+
+/* Smooth Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #e53935 0%, #d32f2f 100%);
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #d32f2f 0%, #b71c1c 100%);
+}
+
+/* Custom button styles matching main app */
+.btn-primary {
+  background: linear-gradient(135deg, #e53935 0%, #d32f2f 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%) !important;
+  box-shadow: 0 6px 20px rgba(229, 57, 53, 0.4) !important;
+  transform: translateY(-2px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Card animations */
+.card-animate {
+  transition: all 0.3s ease;
+}
+
+.card-animate:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading spinner */
+.spinner-border {
+  border-color: #e53935;
+  border-right-color: transparent;
+}
+
+/* Modal animations */
+.modal.fade .modal-dialog {
+  transition: transform 0.3s ease-out;
+}
+
+/* Form focus styles */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #e53935 !important;
+  box-shadow: 0 0 0 0.2rem rgba(229, 57, 53, 0.25) !important;
+  outline: none !important;
+}
+
+/* Badge styles */
+.badge {
+  font-weight: 600;
+  padding: 0.4em 0.8em;
+  border-radius: 0.5rem;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s ease;
+}
+
+.page-exit {
+  opacity: 1;
+}
+
+.page-exit-active {
+  opacity: 0;
+  transition: all 0.3s ease;
 }

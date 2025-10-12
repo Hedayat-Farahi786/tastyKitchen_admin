@@ -1,18 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  CardBody,
-  Button,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Spinner,
-} from "reactstrap";
+import { Input, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import {
   FiEdit2,
   FiTrash2,
@@ -20,6 +7,8 @@ import {
   FiChevronDown,
   FiChevronUp,
 } from "react-icons/fi";
+import { API_BASE_URL } from "../config/api";
+import LoadingSpinner from "./LoadingSpinner";
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -48,7 +37,7 @@ const Categories = () => {
 
   const fetchCategories = () => {
     setLoading(true);
-    fetch("https://tastykitchen-backend.vercel.app/categories")
+    fetch(`${API_BASE_URL}/categories`)
       .then((response) => response.json())
       .then((data) => {
         setCategories(data);
@@ -114,7 +103,7 @@ const Categories = () => {
   };
 
   const handleAddCategory = () => {
-    fetch("https://tastykitchen-backend.vercel.app/categories", {
+    fetch(`${API_BASE_URL}/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newCategory),
@@ -128,14 +117,11 @@ const Categories = () => {
   };
 
   const handleEditCategory = () => {
-    fetch(
-      `https://tastykitchen-backend.vercel.app/categories/${currentCategory._id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(currentCategory),
-      }
-    )
+    fetch(`${API_BASE_URL}/categories/${currentCategory._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentCategory),
+    })
       .then(() => {
         fetchCategories();
         toggleEditModal();
@@ -145,12 +131,9 @@ const Categories = () => {
 
   const handleDeleteCategory = () => {
     setDeleting(true);
-    fetch(
-      `https://tastykitchen-backend.vercel.app/categories/${categoryToDelete._id}`,
-      {
-        method: "DELETE",
-      }
-    )
+    fetch(`${API_BASE_URL}/categories/${categoryToDelete._id}`, {
+      method: "DELETE",
+    })
       .then(() => {
         fetchCategories();
         setDeleting(false);
@@ -182,17 +165,18 @@ const Categories = () => {
   const isFormValid = (form) => form.name.trim() !== "";
 
   const CategoryCard = ({ category }) => (
-    <Card className="h-full shadow-sm hover:shadow-md transition-shadow duration-300 border-0">
-      <CardBody className="flex flex-col">
-        <h3 className="text-xl font-bold mb-2 text-gray-800">
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 border-gray-100 hover:border-primary-200">
+      <div className="p-5">
+        <h3 className="text-xl font-bold mb-2 text-gray-900">
           {category.name}
         </h3>
-        <p className="text-gray-600 mb-4 text-sm flex-grow">
-          {category.description}
+        <p className="text-gray-600 mb-4 text-sm min-h-[40px]">
+          {category.description || "Keine Beschreibung"}
         </p>
+
         {category.extras.length > 0 && (
           <div className="mb-4">
-            <p className="font-medium text-main mb-2">Extras:</p>
+            <p className="font-semibold text-gray-700 mb-2 text-sm">Extras:</p>
             <div className="space-y-2">
               {(expandedCategories[category._id]
                 ? category.extras
@@ -200,311 +184,382 @@ const Categories = () => {
               ).map((extra, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded"
+                  className="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-lg border border-gray-100"
                 >
-                  <span>{extra.name}</span>
-                  <span className="font-semibold text-red-600">
-                    {extra.price.toFixed(2)} €
+                  <span className="text-gray-700">{extra.name}</span>
+                  <span className="font-semibold text-primary-600">
+                    €{extra.price.toFixed(2)}
                   </span>
                 </div>
               ))}
             </div>
             {category.extras.length > 3 && (
-              <div
-                className="mt-2 p-0 text-main cursor-pointer"
+              <button
+                className="mt-2 text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center transition-colors"
                 onClick={() => toggleExtras(category._id)}
               >
                 {expandedCategories[category._id] ? (
-                  <span className="flex items-center text-sm text-main">
-                    <FiChevronUp className="mr-1" /> Show Less
-                  </span>
+                  <>
+                    <FiChevronUp className="mr-1" size={16} /> Weniger anzeigen
+                  </>
                 ) : (
-                  <span className="flex items-center text-sm text-main">
-                    <FiChevronDown className="mr-1" /> Show More
-                  </span>
+                  <>
+                    <FiChevronDown className="mr-1" size={16} /> Mehr anzeigen
+                  </>
                 )}
-              </div>
+              </button>
             )}
           </div>
         )}
-        {
-          category.extras.length === 0 && (
-            <p>No Extras!</p>
-          )
-        }
-        <div className="flex space-x-2 mt-auto">
-          <Button
-          color="secondary"
-            className="flex-1 flex items-center justify-center"
+        {category.extras.length === 0 && (
+          <p className="text-gray-400 text-sm italic mb-4">
+            Keine Extras vorhanden
+          </p>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 pt-4 border-t border-gray-100">
+          <button
+            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 bg-white border-gray-300 text-gray-700 hover:border-primary-400 hover:text-primary-600 transition-all duration-200 font-medium text-sm"
             onClick={() => handleEditButtonClick(category)}
+            title="Kategorie bearbeiten"
           >
-            <span className="flex items-center w-full justify-center">
-            <FiEdit2 className="mr-2" /> Edit
-            </span>
-          </Button>
-          <Button
-            color="danger"
-            className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 border-0"
+            <FiEdit2 size={18} />
+            <span>Bearbeiten</span>
+          </button>
+          <button
+            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 bg-primary-600 border-primary-600 text-white hover:bg-primary-700 transition-all duration-200 font-medium text-sm shadow-md"
             onClick={() => handleDeleteButtonClick(category)}
+            title="Kategorie löschen"
           >
-            <FiTrash2 />
-          </Button>
+            <FiTrash2 size={18} />
+            <span>Löschen</span>
+          </button>
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 
+  if (loading) {
+    return <LoadingSpinner fullScreen message="Kategorien werden geladen..." />;
+  }
+
   return (
-    <div className="p-4 bg-gray-50 min-h-screen">
-      <Card className="mb-4 shadow-sm border-0">
-        <CardBody>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Categories</h2>
-            <Button
-              color="danger"
-              className="bg-red-600 hover:bg-red-700 border-0"
+    <div className="animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100">
+        {/* Header */}
+        <div className="mb-6 pb-6 border-b-2 border-gray-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                Kategorien verwalten
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Erstellen, bearbeiten und verwalten Sie Ihre Kategorien
+              </p>
+            </div>
+
+            <button
+              className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-2.5 px-5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap"
               onClick={toggleModal}
             >
-              <span className="flex items-center justify-center">
-              <FiPlus className="mr-2" /> Add Category
-              </span>
-            </Button>
+              <FiPlus size={18} />
+              <span>Neue Kategorie</span>
+            </button>
           </div>
-          {loading ? (
-            <div className="animate-pulse space-y-4">
-              {[...Array(3)].map((_, index) => (
-                <div key={index} className="h-48 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categories.map((category) => (
-                <CategoryCard key={category._id} category={category} />
-              ))}
-            </div>
-          )}
-        </CardBody>
-      </Card>
+        </div>
+
+        {/* Categories Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {categories.map((category) => (
+            <CategoryCard key={category._id} category={category} />
+          ))}
+        </div>
+
+        {categories.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">Keine Kategorien vorhanden</p>
+            <p className="text-gray-400 text-sm mt-2">
+              Erstellen Sie Ihre erste Kategorie
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Add New Modal */}
-      <Modal isOpen={modal} toggle={toggleModal}>
-        <ModalHeader toggle={toggleModal} className="border-b-0">
-          Add New Category
+      <Modal isOpen={modal} toggle={toggleModal} size="lg">
+        <ModalHeader toggle={toggleModal} className="border-b">
+          <span className="text-xl font-bold text-gray-900">
+            Neue Kategorie hinzufügen
+          </span>
         </ModalHeader>
-        <ModalBody>
-          <Form>
-            <FormGroup>
-              <Label for="name" className="text-gray-700">
-                Category Name
-              </Label>
+        <ModalBody className="p-6">
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="name"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Kategoriename *
+              </label>
               <Input
                 type="text"
                 name="name"
                 id="name"
                 value={newCategory.name}
                 onChange={(e) => handleInputChange(e)}
-                placeholder="Enter category name"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="z.B. Pizza, Burger, Getränke"
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5"
                 required
               />
-            </FormGroup>
-            <FormGroup>
-              <Label for="description" className="text-gray-700">
-                Description
-              </Label>
+            </div>
+
+            <div>
+              <label
+                htmlFor="description"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Beschreibung
+              </label>
               <Input
                 type="textarea"
                 name="description"
                 id="description"
                 value={newCategory.description}
                 onChange={(e) => handleInputChange(e)}
-                placeholder="Enter category description"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="Beschreibung der Kategorie..."
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none"
               />
-            </FormGroup>
-            <FormGroup>
-              <Label className="text-gray-700">Extras</Label><br />
-              {newCategory.extras.map((extra, index) => (
-                <div key={index} className="flex mb-2 space-x-2">
-                  <Input
-                    type="text"
-                    name="name"
-                    placeholder="Extra name"
-                    value={extra.name}
-                    onChange={(e) => handleExtraChange(e, index)}
-                    className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
-                  />
-                  <Input
-                    type="number"
-                    name="price"
-                    placeholder="Price"
-                    value={extra.price}
-                    onChange={(e) => handleExtraChange(e, index)}
-                    className="w-24 rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
-                  />
-                  <Button
-                    color="danger"
-                    onClick={() => removeExtraField(index)}
-                    className="bg-red-500 hover:bg-red-600 border-0"
-                  >
-                    <FiTrash2 />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                color="secondary"
-                onClick={() => addExtraField()}
-                className="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-700 border-0"
-              >
-               <span className="flex items-center">
-               <FiPlus className="mr-2" /> Add Extra
-               </span>
-              </Button>
-            </FormGroup>
-          </Form>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Extras
+              </label>
+              <div className="space-y-2">
+                {newCategory.extras.map((extra, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <Input
+                      type="text"
+                      name="name"
+                      placeholder="Extra-Name"
+                      value={extra.name}
+                      onChange={(e) => handleExtraChange(e, index)}
+                      className="flex-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5"
+                    />
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                        €
+                      </span>
+                      <Input
+                        type="number"
+                        name="price"
+                        placeholder="Preis"
+                        value={extra.price}
+                        onChange={(e) => handleExtraChange(e, index)}
+                        step="0.01"
+                        className="w-full pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeExtraField(index)}
+                      className="p-2.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 rounded-lg transition-colors"
+                      title="Löschen"
+                    >
+                      <FiTrash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addExtraField()}
+                  className="w-full mt-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 font-medium py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <FiPlus size={18} />
+                  <span>Extra hinzufügen</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </ModalBody>
-        <ModalFooter className="border-t-0">
-          <Button
-            color="secondary"
+        <ModalFooter className="border-t bg-gray-50 gap-2">
+          <button
             onClick={toggleModal}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 border-0"
+            className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancel
-          </Button>
-          <Button
-            color="danger"
+            Abbrechen
+          </button>
+          <button
             onClick={handleAddCategory}
             disabled={!isFormValid(newCategory)}
-            className="bg-red-600 hover:bg-red-700 border-0"
+            className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Add
-          </Button>
+            <FiPlus size={18} />
+            <span>Hinzufügen</span>
+          </button>
         </ModalFooter>
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={editModal} toggle={toggleEditModal}>
-        <ModalHeader toggle={toggleEditModal} className="border-b-0">
-          Edit Category
+      <Modal isOpen={editModal} toggle={toggleEditModal} size="lg">
+        <ModalHeader toggle={toggleEditModal} className="border-b">
+          <span className="text-xl font-bold text-gray-900">
+            Kategorie bearbeiten
+          </span>
         </ModalHeader>
-        <ModalBody>
-          <Form>
-            <FormGroup>
-              <Label for="name" className="text-gray-700">
-                Category Name
-              </Label>
+        <ModalBody className="p-6">
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="editName"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Kategoriename *
+              </label>
               <Input
                 type="text"
                 name="name"
-                id="name"
+                id="editName"
                 value={currentCategory.name}
                 onChange={(e) => handleInputChange(e, true)}
-                placeholder="Enter category name"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="z.B. Pizza, Burger, Getränke"
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5"
                 required
               />
-            </FormGroup>
-            <FormGroup>
-              <Label for="description" className="text-gray-700">
-                Description
-              </Label>
+            </div>
+
+            <div>
+              <label
+                htmlFor="editDescription"
+                className="text-sm font-medium text-gray-700 mb-2 block"
+              >
+                Beschreibung
+              </label>
               <Input
                 type="textarea"
                 name="description"
-                id="description"
+                id="editDescription"
                 value={currentCategory.description}
                 onChange={(e) => handleInputChange(e, true)}
-                placeholder="Enter category description"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
+                placeholder="Beschreibung der Kategorie..."
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none"
               />
-            </FormGroup>
-            <FormGroup>
-              <Label className="text-gray-700">Extras</Label><br />
-              {currentCategory.extras.map((extra, index) => (
-                <div key={index} className="flex mb-2 space-x-2">
-                  <Input
-                    type="text"
-                    name="name"
-                    placeholder="Extra name"
-                    value={extra.name}
-                    onChange={(e) => handleExtraChange(e, index, true)}
-                    className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
-                  />
-                  <Input
-                    type="number"
-                    name="price"
-                    placeholder="Price"
-                    value={extra.price}
-                    onChange={(e) => handleExtraChange(e, index, true)}
-                    className="w-24 rounded-md border-gray-300 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50"
-                  />
-                  <Button
-                    color="danger"
-                    onClick={() => removeExtraField(index, true)}
-                    className="bg-red-500 hover:bg-red-600 border-0"
-                  >
-                    <FiTrash2 />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                color="secondary"
-                onClick={() => addExtraField(true)}
-                className="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-700 border-0"
-              >
-                <span className="flex items-center">
-                <FiPlus className="mr-2" /> Add Extra
-                </span>
-              </Button>
-            </FormGroup>
-          </Form>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Extras
+              </label>
+              <div className="space-y-2">
+                {currentCategory.extras.map((extra, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <Input
+                      type="text"
+                      name="name"
+                      placeholder="Extra-Name"
+                      value={extra.name}
+                      onChange={(e) => handleExtraChange(e, index, true)}
+                      className="flex-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5"
+                    />
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                        €
+                      </span>
+                      <Input
+                        type="number"
+                        name="price"
+                        placeholder="Preis"
+                        value={extra.price}
+                        onChange={(e) => handleExtraChange(e, index, true)}
+                        step="0.01"
+                        className="w-full pl-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all py-2.5"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeExtraField(index, true)}
+                      className="p-2.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 rounded-lg transition-colors"
+                      title="Löschen"
+                    >
+                      <FiTrash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addExtraField(true)}
+                  className="w-full mt-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 font-medium py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <FiPlus size={18} />
+                  <span>Extra hinzufügen</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </ModalBody>
-        <ModalFooter className="border-t-0">
-          <Button
-            color="secondary"
+        <ModalFooter className="border-t bg-gray-50 gap-2">
+          <button
             onClick={toggleEditModal}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 border-0"
+            className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancel
-          </Button>
-          <Button
-            color="danger"
+            Abbrechen
+          </button>
+          <button
             onClick={handleEditCategory}
             disabled={!isFormValid(currentCategory)}
-            className="bg-red-600 hover:bg-red-700 border-0"
+            className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Update
-          </Button>
+            <FiEdit2 size={18} />
+            <span>Aktualisieren</span>
+          </button>
         </ModalFooter>
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={deleteModal} toggle={toggleDeleteModal}>
-        <ModalHeader toggle={toggleDeleteModal} className="border-b-0">
-          Delete Category
+      <Modal isOpen={deleteModal} toggle={toggleDeleteModal} size="md">
+        <ModalHeader toggle={toggleDeleteModal} className="border-b">
+          <span className="text-xl font-bold text-gray-900">
+            Kategorie löschen
+          </span>
         </ModalHeader>
-        <ModalBody>
-          <p className="text-gray-700">
-            Are you sure you want to delete the category "
-            {categoryToDelete?.name}"?
-          </p>
+        <ModalBody className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <FiTrash2 size={24} className="text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-900 font-medium mb-2">Sind Sie sicher?</p>
+              <p className="text-gray-600">
+                Möchten Sie die Kategorie "
+                <span className="font-semibold">{categoryToDelete?.name}</span>"
+                wirklich löschen? Diese Aktion kann nicht rückgängig gemacht
+                werden.
+              </p>
+            </div>
+          </div>
         </ModalBody>
-        <ModalFooter className="border-t-0">
-          <Button
-            color="danger"
+        <ModalFooter className="border-t bg-gray-50 gap-2">
+          <button
+            onClick={toggleDeleteModal}
+            className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Abbrechen
+          </button>
+          <button
             onClick={handleDeleteCategory}
             disabled={deleting}
-            className="bg-red-600 hover:bg-red-700 border-0"
+            className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {deleting ? <Spinner size="sm" /> : "Yes, Delete"}
-          </Button>
-          <Button
-            color="secondary"
-            onClick={toggleDeleteModal}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 border-0"
-          >
-            Cancel
-          </Button>
+            {deleting ? (
+              <>
+                <LoadingSpinner size="sm" />
+                <span>Löschen...</span>
+              </>
+            ) : (
+              <>
+                <FiTrash2 size={18} />
+                <span>Ja, löschen</span>
+              </>
+            )}
+          </button>
         </ModalFooter>
       </Modal>
     </div>

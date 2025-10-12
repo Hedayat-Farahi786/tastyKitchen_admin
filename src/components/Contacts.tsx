@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardBody, Button, Input, Table } from 'reactstrap';
-import { FiDownload, FiSearch } from 'react-icons/fi';
+import React, { useEffect, useState } from "react";
+import { FiDownload, FiSearch, FiMail } from "react-icons/fi";
+import { API_BASE_URL } from "../config/api";
+import LoadingSpinner from "./LoadingSpinner";
 
 const Contacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -13,7 +14,7 @@ const Contacts = () => {
 
   const fetchContacts = () => {
     setLoading(true);
-    fetch("https://tastykitchen-backend.vercel.app/contacts")
+    fetch(`${API_BASE_URL}/contacts`)
       .then((response) => response.json())
       .then((data) => {
         setContacts(data);
@@ -59,75 +60,128 @@ const Contacts = () => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const day = date.getDate();
-    const month = date.getMonth() + 1; // Months are zero-indexed
+    const month = date.getMonth() + 1;
     const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+
     return `${day}.${month}.${year} - ${hours}:${minutes}`;
   };
 
+  if (loading) {
+    return <LoadingSpinner fullScreen message="Kontakte werden geladen..." />;
+  }
+
   return (
-    <div className="p-4 bg-gray-50 min-h-screen">
-      <Card className="shadow-sm border-0">
-        <CardBody>
-          <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Contact Information</h2>
-            <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
-              <div className="relative flex items-center">
-                <Input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-              <Button 
-                color="success" 
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 ease-in-out flex items-center justify-center"
-                onClick={handleDownload}
-              >
-                <span className="flex items-center justify-center">
-                <FiDownload className="mr-2" /> Download CSV
-                </span>
-              </Button>
-            </div>
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Kontaktanfragen
+        </h1>
+        <p className="text-gray-600">Übersicht aller Kundenanfragen</p>
+      </div>
+
+      {/* Actions Bar */}
+      <div className="bg-white rounded-lg border border-gray-300 p-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <FiSearch
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Suchen nach Name, Email oder Nachricht..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            />
           </div>
-          
-          {loading ? (
-            <div className="animate-pulse space-y-4">
-              {[...Array(5)].map((_, index) => (
-                <div key={index} className="h-10 bg-gray-200 rounded"></div>
-              ))}
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+          >
+            <FiDownload size={18} />
+            <span>CSV Exportieren</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Contacts Table */}
+      <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
+        {filteredContacts.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="bg-gray-100 p-6 rounded-full inline-block mb-4">
+              <FiMail className="text-gray-400 text-5xl" />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="w-full" hover responsive>
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received At</th>
+            <p className="text-gray-900 font-semibold text-lg mb-2">
+              Keine Kontaktanfragen gefunden
+            </p>
+            <p className="text-gray-500 text-sm">
+              {searchTerm
+                ? "Versuchen Sie einen anderen Suchbegriff"
+                : "Es sind noch keine Anfragen eingegangen"}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    E-Mail
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Nachricht
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Eingegangen am
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredContacts.map((contact) => (
+                  <tr
+                    key={contact._id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="bg-primary-50 rounded-full w-10 h-10 flex items-center justify-center mr-3">
+                          <span className="text-sm font-semibold text-primary-600">
+                            {contact.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {contact.name}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        {contact.email}
+                      </a>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 max-w-md">
+                      <div className="line-clamp-2">{contact.message}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(contact.createdAt)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredContacts.map((contact) => (
-                    <tr key={contact._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contact.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contact.email}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{contact.message}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(contact.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -26,7 +26,7 @@ const OrderDetail = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://tastykitchen-backend.vercel.app/orders/${orderNumber}`
+        `${API_BASE_URL}/orders/${orderNumber}`
       );
       const data = await response.json();
       setOrder(data);
@@ -285,3 +285,7 @@ const OrderDetail = () => {
 };
 
 export default OrderDetail;
+
+
+
+
